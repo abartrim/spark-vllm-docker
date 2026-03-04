@@ -104,6 +104,21 @@ if not assets:
     print("No assets found matching prefix: " + prefix, file=sys.stderr)
     sys.exit(1)
 
+newest_remote_ts = max(
+    datetime.strptime(a["updated_at"], "%Y-%m-%dT%H:%M:%SZ")
+            .replace(tzinfo=timezone.utc).timestamp()
+    for a in assets
+)
+
+# If local wheels (any version matching prefix) are all newer than the
+# latest GitHub asset, they were freshly built and should not be replaced.
+local_wheels = [
+    os.path.join(wheels_dir, f) for f in os.listdir(wheels_dir)
+    if f.startswith(prefix) and f.endswith(".whl")
+]
+if local_wheels and all(os.path.getmtime(p) >= newest_remote_ts for p in local_wheels):
+    sys.exit(0)
+
 for a in assets:
     local_path = os.path.join(wheels_dir, a["name"])
     remote_ts = datetime.strptime(a["updated_at"], "%Y-%m-%dT%H:%M:%SZ") \
