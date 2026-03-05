@@ -26,7 +26,10 @@ While it was primarily developed to support multi-node inference, it works just 
 
 This repository is not affiliated with NVIDIA or their subsidiaries. This is a community effort aimed to help DGX Spark users to set up and run the most recent versions of vLLM on Spark cluster or single nodes. 
 
-The Dockerfile builds from the main branch of VLLM, so depending on when you run the build process, it may not be in fully functioning state. You can target a specific vLLM release by setting `--vllm-ref` parameter.
+Unless `--rebuild-vllm` or `--vllm-ref` or `--apply-vllm-pr` is specified, the builder will fetch the latest precompiled vLLM wheels from the repository. They are built nightly and tested on multiple models in both cluster and solo configuration before publishing.
+We will expand the selection of models we test in the pipeline, but since vLLM is a rapidly developing platform, some things may break.
+
+If you want to build the latest from main branch, you can specify `--rebuild-vllm` flag. Or you can target a specific vLLM release by setting `--vllm-ref` parameter.
 
 ## QUICK START
 
@@ -58,7 +61,7 @@ Then run the following command that will build and distribute image across the c
 ./build-and-copy.sh -c
 ```
 
-An initial build will take around 20-30 minutes, but subsequent builds will be faster. Precompiled vLLM wheels for DGX Spark will also be available soon.
+An initial build speed depends on your Internet connection speed and whether the base image is already present on your machine. After base image pull, the build should take only 2-3 minutes. If `--rebuild-vllm` and/or `--rebuild-flashinfer` is used to trigger a build from the sourcew, it will take between 20-40 minutes, but subsequent builds will be faster. Prebuilt FlashInfer and vLLM wheels are downloaded automatically from GitHub releases, so compilation from source is usually not required.
 
 ### Run
 
@@ -120,7 +123,7 @@ To launch the model:
 
 This will run the model on all available cluster nodes.
 
-**NOTE:** do not use `--load-format fastsafetensors` if you are loading models that would take >0.8 of available RAM (without KV cache) as it may result in out of memory situation.
+**NOTE:** do not use `--load-format fastsafetensors` if you are loading models that would take >0.85 of available RAM (without KV cache) as it may result in out of memory situation.
 
 **Also:** You can use any vLLM container that has "bash" as its default entrypoint with the launch script. It was tested with NGC vLLM, but can work with others too. To use such container in the cluster, you need to specify `--apply-mod use-ngc-vllm` argument to `./launch-cluster.sh`. However, it's recommended to build the container using this repository for best compatibility and most up-to-date features. 
 
@@ -145,6 +148,21 @@ docker builder prune
 Don't do it every time you rebuild, because it will slow down compilation times.
 
 For periodic maintenance, I recommend using a filter: `docker builder prune --filter until=72h`
+
+### 2026-03-04
+
+#### Prebuilt vLLM Wheels via GitHub Releases
+
+`build-and-copy.sh` now automatically downloads prebuilt vLLM wheels from the [GitHub releases](https://github.com/eugr/spark-vllm-docker/releases/tag/prebuilt-vllm-current) before falling back to a local build — identical to the existing FlashInfer download mechanism. This eliminates the need to compile vLLM from source on first use.
+
+The download logic mirrors the FlashInfer behaviour:
+- If prebuilt wheels are available and newer than any locally cached version, they are downloaded automatically.
+- If the download fails (e.g. no network, release not found, GPU arch not supported), the script falls back to building locally, or reuses existing local wheels if present.
+- `--rebuild-vllm`, `--vllm-ref`, or `--apply-vllm-pr` skip the download entirely and force a local build.
+
+No new flags are required — the download happens transparently.
+
+All prebuilt wheels are now tested with multiple models in both solo and cluster configuration as a part of automated deployment pipeline which will now run nightly. The wheels are released only if they pass all the tests and no significant performance regressions are detected. 
 
 ### 2026-03-02
 
@@ -177,7 +195,6 @@ Added a new mod for Intel/Qwen3-Coder-Next-INT4-Autoround model support: `mods/f
 #### Minimax Reasoning Parser Update
 
 Changed reasoning parser in Minimax for better compatibility with modern clients (like coding tools).
-
 
 ### 2026-02-18
 
