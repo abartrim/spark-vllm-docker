@@ -819,6 +819,7 @@ Examples:
     launch_group.add_argument("-d", "--daemon", action="store_true", help="Run in daemon mode")
     launch_group.add_argument("-t", "--container", dest="container_override", help="Override container image from recipe")
     launch_group.add_argument("--nccl-debug", choices=["VERSION", "WARN", "INFO", "TRACE"], help="NCCL debug level")
+    launch_group.add_argument("-e", "--env", action="append", dest="env_vars", default=[], metavar="VAR=VALUE", help="Environment variable to pass to container (e.g. -e HF_TOKEN=xxx). Can be used multiple times.")
     
     # Cluster discovery options
     discover_group = parser.add_argument_group("Cluster discovery")
@@ -1119,6 +1120,8 @@ Examples:
             cmd_parts.extend(["-n", ",".join(nodes)])
         if args.nccl_debug:
             cmd_parts.extend(["--nccl-debug", args.nccl_debug])
+        for env_var in args.env_vars:
+            cmd_parts.extend(["-e", env_var])
         cmd_parts.extend(["\\", "\n      --launch-script", "/tmp/tmpXXXXXX.sh"])
         print(" ".join(cmd_parts))
         print()
@@ -1159,6 +1162,9 @@ Examples:
         
         if args.nccl_debug:
             cmd.extend(["--nccl-debug", args.nccl_debug])
+        
+        for env_var in args.env_vars:
+            cmd.extend(["-e", env_var])
         
         # Add launch script
         cmd.extend(["--launch-script", temp_script])
