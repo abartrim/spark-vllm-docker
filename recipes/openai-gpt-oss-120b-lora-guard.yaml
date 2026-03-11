@@ -22,8 +22,7 @@ mods:
 # Provide adapter mount externally at launch time, e.g.:
 # VLLM_SPARK_EXTRA_DOCKER_ARGS="-v /path/to/lora_adapter_delta:/lora-adapters/lora_adapter_delta"
 
-# Host paths to bind-mount into the container: "host_path:container_path"
-# Paths support shell env var expansion (e.g. ${HOME})
+# Default settings (can be overridden via CLI)
 defaults:
   port: 8000
   host: 0.0.0.0
