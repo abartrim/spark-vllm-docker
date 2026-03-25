@@ -78,6 +78,7 @@ usage() {
     echo "  IB_IF               InfiniBand interface name"
     echo "  MASTER_PORT         Port for cluster coordination (default: 29501)"
     echo "  CONTAINER_NAME      Container name (default: vllm_node)"
+    echo "  LOCAL_IP            Local IP address (for solo mode or override auto-detection)"
     echo "  CONTAINER_*         Any variable starting with CONTAINER_ (except CONTAINER_NAME)"
     echo "                      becomes -e flag. Example: CONTAINER_NCCL_DEBUG=INFO -> -e NCCL_DEBUG=INFO"
     echo ""
@@ -87,6 +88,7 @@ usage() {
     echo "  IB_IF=ib0"
     echo "  MASTER_PORT=29501"
     echo "  CONTAINER_NAME=vllm_node"
+    echo "  LOCAL_IP=192.168.1.1"
     echo "  CONTAINER_NCCL_DEBUG=INFO"
     echo "  CONTAINER_HF_TOKEN=abc123"
     echo ""
@@ -256,6 +258,10 @@ if [[ -z "$CONTAINER_NAME" || "$CONTAINER_NAME" == "vllm_node" ]] && [[ -n "$DOT
     CONTAINER_NAME="$DOTENV_CONTAINER_NAME"
 fi
 
+if [[ -n "$DOTENV_LOCAL_IP" ]]; then
+    export LOCAL_IP="$DOTENV_LOCAL_IP"
+fi
+
 # Validate non-privileged mode flags
 if [[ "$NON_PRIVILEGED_MODE" == "true" ]]; then
     # Set default swap limit if not specified
@@ -408,7 +414,10 @@ if [[ "$SOLO_MODE" == "true" ]]; then
         exit 1
     fi
     # Solo mode: skip node detection, just get local IP
-    LOCAL_IP="127.0.0.1"
+    # Use LOCAL_IP from .env if set, otherwise default to 127.0.0.1
+    if [[ -z "$LOCAL_IP" ]]; then
+        LOCAL_IP="127.0.0.1"
+    fi
     NODES_ARG="$LOCAL_IP"
     PEER_NODES=()
     echo "Solo mode enabled. Skipping node detection."
