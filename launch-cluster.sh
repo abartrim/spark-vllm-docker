@@ -720,6 +720,32 @@ apply_mod_to_container() {
     fi
 }
 
+# Parse -tp/-pp/-dp (and long forms) from a text string (command or script content).
+# Sets TP_SIZE, PP_SIZE, DP_SIZE, PARALLELISM_FOUND globals.
+# Only acts when at least one parallelism flag is present.
+parse_parallelism_from_text() {
+    local text="$1"
+    TP_SIZE=1; PP_SIZE=1; DP_SIZE=1
+    PARALLELISM_FOUND=false
+
+    # Normalize --flag=value to --flag value for uniform word-by-word parsing
+    local normalized
+    normalized=$(echo "$text" | sed 's/\(--[a-z-]*\)=/\1 /g')
+
+    local prev=""
+    for word in $normalized; do
+        case "$prev" in
+            -tp|--tensor-parallel-size)
+                [[ "$word" =~ ^[0-9]+$ ]] && TP_SIZE="$word" && PARALLELISM_FOUND=true ;;
+            -pp|--pipeline-parallel-size)
+                [[ "$word" =~ ^[0-9]+$ ]] && PP_SIZE="$word" && PARALLELISM_FOUND=true ;;
+            -dp|--data-parallel-size)
+                [[ "$word" =~ ^[0-9]+$ ]] && DP_SIZE="$word" && PARALLELISM_FOUND=true ;;
+        esac
+        prev="$word"
+    done
+}
+
 # Build a patched copy of the launch script on the host for a specific node.
 # Strips --distributed-executor-backend and appends multi-node args.
 # Prints the path of the temp file (caller must delete it).
@@ -965,6 +991,29 @@ exec_no_ray_cluster() {
 }
 
 if [[ "$ACTION" == "exec" ]]; then
+    # For --no-ray, trim (or error on) PEER_NODES based on declared parallelism
+    if [[ "$NO_RAY_MODE" == "true" ]]; then
+        if [[ "$LAUNCH_SCRIPT_MODE" == "true" ]]; then
+            cmd_text=$(cat "$LAUNCH_SCRIPT_PATH" 2>/dev/null || true)
+        else
+            cmd_text="$COMMAND_TO_RUN"
+        fi
+        parse_parallelism_from_text "$cmd_text"
+
+        if [[ "$PARALLELISM_FOUND" == "true" ]]; then
+            required_nodes=$(( TP_SIZE * PP_SIZE * DP_SIZE ))
+            total_nodes=$(( 1 + ${#PEER_NODES[@]} ))
+
+            if [[ "$required_nodes" -gt "$total_nodes" ]]; then
+                echo "Error: Command requires $required_nodes nodes (tp=$TP_SIZE * pp=$PP_SIZE * dp=$DP_SIZE) but only $total_nodes node(s) are configured."
+                exit 1
+            elif [[ "$required_nodes" -lt "$total_nodes" ]]; then
+                echo "Note: Command requires $required_nodes node(s) (tp=$TP_SIZE * pp=$PP_SIZE * dp=$DP_SIZE); using $required_nodes of $total_nodes configured node(s)."
+                PEER_NODES=("${PEER_NODES[@]:0:$(( required_nodes - 1 ))}")
+            fi
+        fi
+    fi
+
     start_cluster
     echo "Executing command: $COMMAND_TO_RUN"
 
