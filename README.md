@@ -135,6 +135,22 @@ For periodic maintenance, I recommend using a filter: `docker builder prune --fi
 
 ## CHANGELOG
 
+### 2026-04-02
+
+A new recipe for Gemma4-26B-A4B in "on-the-fly" FP8 quantization:
+
+Single Spark:
+
+```bash
+./run-recipe.sh gemma4-26b-a4b --solo
+```
+
+Dual Sparks: 
+
+```bash
+./run-recipe.sh gemma4-26b-a4b --no-ray
+```
+
 ### 2026-03-31
 
 #### Flags to specify Flashinfer ref and apply PRs
