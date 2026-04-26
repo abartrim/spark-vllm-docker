@@ -23,6 +23,7 @@ mods:
   - mods/fix-qwen3.5-autoround
   - mods/fix-qwen3.5-chat-template
   - mods/gpu-mem-util-gb
+  - mods/drop-caches
 
 # Default settings (can be overridden via CLI)
 defaults:
@@ -54,6 +55,7 @@ command: |
     --max-num-batched-tokens {max_num_batched_tokens} \
     --trust-remote-code \
     --chat-template unsloth.jinja \
+    --load-format instanttensor \
     -tp {tensor_parallel} \
     --distributed-executor-backend ray
 

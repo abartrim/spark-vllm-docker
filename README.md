@@ -135,6 +135,23 @@ For periodic maintenance, I recommend using a filter: `docker builder prune --fi
 
 ## CHANGELOG
 
+### 2026-04-14
+
+Added `--load-format instanttensor` support to vLLM - thanks @SeraphimSerapis. 
+An experimental option for now, but allows for faster loading than the current fastsafetensors default. You need to rebuild the container to start using the option, but you don't have to trigger the source build.
+
+### 2026-04-12
+
+#### Drop-caches mod for Qwen3.5-397B
+
+Updated Qwen3.5-397B recipe (for dual node configuration) to use the new mod `mods/drop-caches` which clears filesystem caches every minute while the container is running, resolving fastsafetensors getting stuck during loading and a few other bugs when operating close to max memory limit.
+
+### 2026-04-11
+
+#### Pinned PyTorch Version
+
+Pinned PyTorch to version 2.11.0 (previously using nightly builds) to fix incompatibility with transformers 5.x and avoid torch version mismatch in builds.
+
 ### 2026-04-02
 
 A new recipe for Gemma4-26B-A4B in "on-the-fly" FP8 quantization:

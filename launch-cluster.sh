@@ -977,8 +977,10 @@ exec_no_ray_cluster() {
             worker_cmd="$clean --nnodes $total_nodes --node-rank $rank --master-addr $HEAD_IP --master-port $MASTER_PORT --headless"
         fi
         echo "Launching worker (rank $rank) on $worker..."
-        ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$worker" \
-            "docker exec -d $CONTAINER_NAME bash -c \"$worker_cmd >> /proc/1/fd/1 2>&1\""
+        local remote_payload remote_cmd
+        remote_payload="$worker_cmd >> /proc/1/fd/1 2>&1"
+        printf -v remote_cmd 'docker exec -d %q bash -c %q' "$CONTAINER_NAME" "$remote_payload"
+        ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$worker" "$remote_cmd"
         (( rank++ ))
     done
 
